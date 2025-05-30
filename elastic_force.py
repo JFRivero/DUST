@@ -7,8 +7,13 @@ import numpy as np
 import scipy.integrate as sp_int
 
 import yakoub_shape_function as shape_fun
+
+import gauss_quad
+
 maxsubs=10
-rtol=1e-3
+rtol=1e-8
+
+ngauss = 20
 def tpl_int(fun, low_lim, up_lim):
     ## aux_fun allows fun to return vectors of vectors
     def aux_fun(X,fun):
@@ -24,6 +29,13 @@ def tpl_int(fun, low_lim, up_lim):
 
     return sp_int.cubature(lambda X: aux_fun(X,fun), low_lim, up_lim,
                            max_subdivisions=maxsubs, rtol=rtol)
+
+def tpl_int_gq(fun, low_lim, up_lim):
+    return gauss_quad.triple_integrator(fun,[low_lim[0],up_lim[0]],
+                                        [low_lim[0],up_lim[0]],
+                                        [low_lim[0],up_lim[0]],
+                                        ngauss,ngauss,ngauss)
+
 
 class Fe():
     def __init__(self, a, b, l , e0, lam, G):
@@ -52,19 +64,31 @@ class Fe():
     def eval_K1(self):
         print(f"Evaluating K1 with maxsubs = {maxsubs} and rtol = {rtol}.",flush=True)
         K1 = np.zeros((self.ncoord,self.ncoord))
+        K1_qd = np.zeros((self.ncoord,self.ncoord))
         for i in range(3):
+            print(f"Starting Gaussian quadrature with ngauss = {ngauss}.",flush=True)
+            aux_int_qd = tpl_int_gq(lambda x,y,z: self.dS_dr0TxdS_dr0(x,y,z,i),
+                                    (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+            print(f"Gaussian quadrature completed. Integrand is shape {aux_int_qd.shape}",flush=True)
+
             aux_int = tpl_int(lambda X: self.dS_dr0TxdS_dr0(X[0],X[1],X[2],i),
                           (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
             if aux_int.status == "not_converged":
                 print(f"K1 integration at alf = {i} has not converged.",flush=True)
             else:
                 print(f"K1 integration at alf = {i} has {aux_int.status}.",flush=True)
+            print(f"Difference between integrands is {np.max(np.abs(aux_int.estimate-aux_int_qd))}",flush=True)
+                
             K1 += aux_int.estimate
+            K1_qd += aux_int_qd
+            
         K1 *= -(3*self.lam+2*self.G)/2
+        K1_qd *= -(3*self.lam+2*self.G)/2
 
-        np.save(f"K1_matrix{maxsubs}_{rtol}.npy", K1) # all this metadata should be added to the file
+        # np.save(f"K1_matrix{maxsubs}_{rtol}.npy", K1) # all this metadata should be added to the file
 
         self.K1 = K1
+        self.K1_qd = K1_qd
 
     def load_K1(self):
         self.K1 = np.load("K1_matrix.npy")
