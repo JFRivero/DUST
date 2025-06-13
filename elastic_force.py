@@ -6,7 +6,7 @@ import numpy as np
 
 import scipy.integrate as sp_int
 
-import yakoub_shape_function as shape_fun
+import yakoub_shape_function as shape_fun #generated with sym_shape_fun
 
 import gauss_quad
 

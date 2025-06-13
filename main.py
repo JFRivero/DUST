@@ -9,9 +9,11 @@ import scipy.integrate as sp_int
 
 import elastic_force
 
-import yakoub_mass_matrix
+import yakoub_mass_matrix #generated with sym_mass_matrix
 
-import constrains
+import constrains #generated with sym_constrains
+
+from RK4 import fixed_step_rk4 as RK4
 
 import importlib as imp
 imp.reload(elastic_force)
@@ -55,6 +57,7 @@ dr1_z = np.array([0,0,0]).T
 
 # Undeformed shape
 e0 = np.hstack((r0,r0_x,r0_y,r0_z,r1,r1_x,r1_y,r1_z))
+ncoord = e0.size
 
 # Initial conditions: start from the undeformed shape with non-zero velocity at node 1
 y0 = np.hstack((dr0,dr0_x,dr0_y,dr0_z,dr1,dr1_x,dr1_y,dr1_z,
@@ -65,7 +68,7 @@ Integration parameters
 """
 t0 = 0
 tf = 1
-t_eval = np.linspace(t0,tf,100)
+t_eval = np.linspace(t0,tf,1000)
 
 """
 ODE definition
@@ -77,26 +80,29 @@ Fe = elastic_force.Fe(a,b,l,e0,lam,G)
 Fe.load_K1()
 Fe.load_CK2()
 
-# def mass_matrix():
-#     M = yakoub_mass_matrix.eval(rho, b, a, l)
-#     Ce = constrains.eval_Ce()
+def mass_matrix():
+    M = yakoub_mass_matrix.eval(rho, b, a, l)
+    Ce = constrains.eval_Ce()
     
-#     return np.vstack((np.hstack((M,Ce.T)),np.hstack((Ce,np.zeros((Ce.shape[0],Ce.shape[0]))))))
+    return np.vstack((np.hstack((M,Ce.T)),np.hstack((Ce,np.zeros((Ce.shape[0],Ce.shape[0]))))))
 
-# def fun(t,y):
+def fun(t,y):
 
-#     Qd = constrains.eval_Qd() 
-#     Q =  ## MISSING
-#     A = mass_matrix()
-#     b = np.hstack((Q,Qd))
-#     X = np.linalg.solve(A, b)
+    print(t,flush=True)
+    Qd = constrains.eval_Qd() 
+    Q = Fe.eval_Fe(y[ncoord:])
+    A = mass_matrix()
+    b = np.hstack((Q,Qd.ravel()))
+    X = np.linalg.solve(A, b)
 
-#     return np.vstack([X[0:y.size], y[:y.size]])
+    return np.hstack([X[:ncoord], y[:ncoord]])
 
 
-# """
-# Integration
-# """
+"""
+Integration
+"""
 
 # sol = sp_int.solve_ivp(fun, (t0,tf), y0, method='LSODA', t_eval=t_eval)
+sol = RK4(fun, y0, t_eval)
 
+e = sol[ncoord:,:]
