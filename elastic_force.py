@@ -32,8 +32,8 @@ def tpl_int(fun, low_lim, up_lim):
 
 def tpl_int_gq(fun, low_lim, up_lim):
     return gauss_quad.triple_integrator(fun,[low_lim[0],up_lim[0]],
-                                        [low_lim[0],up_lim[0]],
-                                        [low_lim[0],up_lim[0]],
+                                        [low_lim[1],up_lim[1]],
+                                        [low_lim[2],up_lim[2]],
                                         ngauss,ngauss,ngauss)
 
 
@@ -62,39 +62,43 @@ class Fe():
         return res
 
     def eval_K1(self):
-        print(f"Evaluating K1 with maxsubs = {maxsubs} and rtol = {rtol}.",flush=True)
+        # print(f"Evaluating K1 with maxsubs = {maxsubs} and rtol = {rtol}.",flush=True)
         K1 = np.zeros((self.ncoord,self.ncoord))
         K1_qd = np.zeros((self.ncoord,self.ncoord))
         for i in range(3):
-            print(f"Starting Gaussian quadrature with ngauss = {ngauss}.",flush=True)
+            # print(f"Starting Gaussian quadrature with ngauss = {ngauss}.",flush=True)
             aux_int_qd = tpl_int_gq(lambda x,y,z: self.dS_dr0TxdS_dr0(x,y,z,i),
                                     (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
-            print(f"Gaussian quadrature completed. Integrand is shape {aux_int_qd.shape}",flush=True)
+            # print(f"Gaussian quadrature completed. Integrand is shape {aux_int_qd.shape}",flush=True)
 
-            aux_int = tpl_int(lambda X: self.dS_dr0TxdS_dr0(X[0],X[1],X[2],i),
-                          (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
-            if aux_int.status == "not_converged":
-                print(f"K1 integration at alf = {i} has not converged.",flush=True)
-            else:
-                print(f"K1 integration at alf = {i} has {aux_int.status}.",flush=True)
-            print(f"Difference between integrands is {np.max(np.abs(aux_int.estimate-aux_int_qd))}",flush=True)
+            # aux_int = tpl_int(lambda X: self.dS_dr0TxdS_dr0(X[0],X[1],X[2],i),
+            #               (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+            # if aux_int.status == "not_converged":
+            #     print(f"K1 integration at alf = {i} has not converged.",flush=True)
+            # else:
+            #     print(f"K1 integration at alf = {i} has {aux_int.status}.",flush=True)
+            # print(f"Difference between integrands is {np.max(np.abs(aux_int.estimate-aux_int_qd))}",flush=True)
+            # print(f"Max error of cubature is {np.max(np.abs(aux_int.error))}",flush=True)
+            # print(f"Number of subdivisions is {aux_int.subdivisions}",flush=True)
                 
-            K1 += aux_int.estimate
+            # K1 += aux_int.estimate
             K1_qd += aux_int_qd
             
-        K1 *= -(3*self.lam+2*self.G)/2
+        # K1 *= -(3*self.lam+2*self.G)/2
         K1_qd *= -(3*self.lam+2*self.G)/2
 
         # np.save(f"K1_matrix{maxsubs}_{rtol}.npy", K1) # all this metadata should be added to the file
+        np.save(f"K1_matrix.npy", K1_qd) # all this metadata should be added to the file
 
-        self.K1 = K1
-        self.K1_qd = K1_qd
+        # self.K1 = K1
+        # self.K1_qd = K1_qd
+        self.K1 = K1_qd
 
     def load_K1(self):
         self.K1 = np.load("K1_matrix.npy")
 
     def eval_CK2(self):
-        print(f"Evaluating CK2 with maxsubs = {maxsubs}.",flush=True)
+        # print(f"Evaluating CK2 with maxsubs = {maxsubs}.",flush=True)
         ncoord = self.ncoord
         CK2 = np.zeros((ncoord**2,ncoord**2))
         for i in range(ncoord):
@@ -102,36 +106,67 @@ class Fe():
             for j in range(ncoord):
                 auxj=j*ncoord
                 for alf in range(3):
-                    aux_int = tpl_int(lambda X: self.S_alfiTxS_alfj(X[0],X[1],X[2],alf,i,j),
+                    """
+                    Cubature integrator
+                    """
+                    # aux_int = tpl_int(lambda X: self.S_alfiTxS_alfj(X[0],X[1],X[2],alf,i,j),
+                    #                   (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+                    # if aux_int.status == "not_converged":
+                    #     print(f"CK2 first integration at i = {i}, j = {j} and alf = {alf} has not converged.",flush=True)
+                    # else:
+                    #     print(f"CK2 first integration at i = {i}, j = {j} and alf = {alf} has {aux_int.status}.",flush=True)
+                    # CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += (self.lam + 2*self.G)/2*aux_int.estimate
+                    """
+                    Gaussian integrator
+                    """
+                    aux_int = tpl_int_gq(lambda x,y,z: self.S_alfiTxS_alfj(x,y,z,alf,i,j),
                                       (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
-                    if aux_int.status == "not_converged":
-                        print(f"CK2 first integration at i = {i}, j = {j} and alf = {alf} has not converged.",flush=True)
-                    else:
-                        print(f"CK2 first integration at i = {i}, j = {j} and alf = {alf} has {aux_int.status}.",flush=True)
-                    CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += (self.lam + 2*self.G)/2*aux_int.estimate
+                    CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += (self.lam + 2*self.G)/2*aux_int
                     for bet in range(3):
                         if alf != bet:
-                            aux_int = tpl_int(lambda X:
-                                              self.dS_dr0TxdS_dr0(X[0],X[1],X[2],alf)[i,:].reshape(ncoord,1)@
-                                              self.dS_dr0TxdS_dr0(X[0],X[1],X[2],bet)[j,:].reshape(1,ncoord),
-                                              (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
-                            if aux_int.status == "not_converged":
-                                print(f"CK2 second integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has not converged.",flush=True)
-                            else:
-                                print(f"CK2 second integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has {aux_int.status}.",flush=True)
-                            CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += self.lam/2*aux_int.estimate
-                            aux_int = tpl_int(lambda X: (self.dS_dr0[alf](X[0],X[1],X[2]).T@
-                                                         self.dS_dr0[bet](X[0],X[1],X[2]))[i,:].reshape(ncoord,1)@
-                                              (self.dS_dr0[bet](X[0],X[1],X[2]).T@
-                                               self.dS_dr0[alf](X[0],X[1],X[2]))[j,:].reshape(1,ncoord),
-                                              (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
-                            if aux_int.status == "not_converged":
-                                print(f"CK2 third integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has not converged.",flush=True)
-                            else:
-                                print(f"CK2 third integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has {aux_int.status}.",flush=True)
-                            CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += self.G*aux_int.estimate
+                            """
+                            Cubature integrator                            
+                            """
+                            # aux_int = tpl_int(lambda X:
+                            #                   self.dS_dr0TxdS_dr0(X[0],X[1],X[2],alf)[i,:].reshape(ncoord,1)@
+                            #                   self.dS_dr0TxdS_dr0(X[0],X[1],X[2],bet)[j,:].reshape(1,ncoord),
+                            #                   (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+                            # if aux_int.status == "not_converged":
+                            #     print(f"CK2 second integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has not converged.",flush=True)
+                            # else:
+                            #     print(f"CK2 second integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has {aux_int.status}.",flush=True)
+                            """
+                            Quadratic gaussian integrator
+                            """
+                            aux_int = tpl_int_gq(lambda x,y,z:
+                                                 self.dS_dr0TxdS_dr0(x,y,z,alf)[i,:].reshape(ncoord,1)@
+                                                 self.dS_dr0TxdS_dr0(x,y,z,bet)[j,:].reshape(1,ncoord),
+                                                 (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+                            CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += self.lam/2*aux_int
+                            """
+                            Cubature integrator                            
+                            """
+                            # aux_int = tpl_int(lambda X: (self.dS_dr0[alf](X[0],X[1],X[2]).T@
+                            #                              self.dS_dr0[bet](X[0],X[1],X[2]))[i,:].reshape(ncoord,1)@
+                            #                   (self.dS_dr0[bet](X[0],X[1],X[2]).T@
+                            #                    self.dS_dr0[alf](X[0],X[1],X[2]))[j,:].reshape(1,ncoord),
+                            #                   (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+                            # if aux_int.status == "not_converged":
+                            #     print(f"CK2 third integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has not converged.",flush=True)
+                            # else:
+                            #     print(f"CK2 third integration at i = {i}, j = {j}, alf = {alf} and bet = {bet} has {aux_int.status}.",flush=True)
+                            # CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += self.G*aux_int.estimate
+                            """
+                            Quadratic gaussian integrator
+                            """
+                            aux_int = tpl_int_gq(lambda x,y,z: (self.dS_dr0[alf](x,y,z).T@
+                                                                self.dS_dr0[bet](x,y,z))[i,:].reshape(ncoord,1)@
+                                                 (self.dS_dr0[bet](x,y,z).T@
+                                                  self.dS_dr0[alf](x,y,z))[j,:].reshape(1,ncoord),
+                                                 (0, -self.a/2,-self.b/2), (self.l, self.a/2, self.b/2))
+                            CK2[auxi:auxi+ncoord,auxj:auxj+ncoord] += self.G*aux_int
 
-        np.save(f"CK2_matrix{maxsubs}.npy", CK2)
+        np.save(f"CK2_matrix.npy", CK2)
 
         self.CK2 = CK2
 
