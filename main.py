@@ -50,7 +50,8 @@ dr0 = np.array([0,0,0]).T
 dr0_x = np.array([0,0,0]).T
 dr0_y = np.array([0,0,0]).T
 dr0_z = np.array([0,0,0]).T
-dr1 = np.array([0,1,0]).T
+dr1 = np.array([0,0,0]).T
+# dr1 = np.array([0,1,0]).T
 dr1_x = np.array([0,0,0]).T
 dr1_y = np.array([0,0,0]).T
 dr1_z = np.array([0,0,0]).T
@@ -67,8 +68,11 @@ y0 = np.hstack((dr0,dr0_x,dr0_y,dr0_z,dr1,dr1_x,dr1_y,dr1_z,
 Integration parameters
 """
 t0 = 0
-tf = 1
+tf = .1
 t_eval = np.linspace(t0,tf,1000)
+
+Baum_a = 1000
+Baum_b = 1000
 
 """
 ODE definition
@@ -87,15 +91,21 @@ def mass_matrix():
     return np.vstack((np.hstack((M,Ce.T)),np.hstack((Ce,np.zeros((Ce.shape[0],Ce.shape[0]))))))
 
 def fun(t,y):
-
     print(t,flush=True)
-    Qd = constrains.eval_Qd() 
-    Q = Fe.eval_Fe(y[ncoord:])
+
+    e = y[ncoord:]
+    de = y[:ncoord]
+
     A = mass_matrix()
-    b = np.hstack((Q,Qd.ravel()))
+    
+    Qd = constrains.eval_Qd()
+    QBaum = constrains.eval_QBaum(e,Baum_a,Baum_b)
+    Q = Fe.eval_Fe(e)
+    b = np.hstack((Q,Qd.ravel()-QBaum.ravel()))
+
     X = np.linalg.solve(A, b)
 
-    return np.hstack([X[:ncoord], y[:ncoord]])
+    return np.hstack([X[:ncoord], de])
 
 
 """

@@ -147,6 +147,11 @@ ddr1_z = sym.Matrix([ddx1_z, ddy1_z, ddz1_z])
 
 dde = sym.Matrix(np.concatenate((ddr0,ddr0_x,ddr0_y,ddr0_z,ddr1,ddr1_x,ddr1_y,ddr1_z)))
 
+# Baumgarte parameters
+
+a = sym.symbols("a")
+b = sym.symbols("b")
+
 # Contrains
 C = sym.Matrix([r0[0],r0[1],r0[2],r0_x[1],r0_x[2],r0_y[2]])
 
@@ -164,9 +169,14 @@ for i in range(len(e)):
 
 Qd = - dCe*de + dCt
 
-Ce = sym.simplify(Ce)
+QBaum = 2*a*(Ce*e+Ct)-b**2*C
 
+Ce = sym.simplify(Ce)
 Qd = sym.simplify(Qd)
+QBaum = sym.simplify(QBaum)
 
 sympy2numpy.generate_lambdified_script("constrains.py", Ce, funname="eval_Ce")
 sympy2numpy.generate_lambdified_script("constrains.py", Qd, funname="eval_Qd", addtofile=True)
+variables_eval = (e, a, b)
+sympy2numpy.generate_lambdified_script("constrains.py", QBaum, variables_eval,
+                                       funname="eval_QBaum", addtofile=True)
