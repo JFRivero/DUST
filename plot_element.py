@@ -29,6 +29,12 @@ def plot_3D(S,e,a,b,l,ax=None):
 
     ax.axis("equal")
 
+    ax.set_xlim(0,l*1.2)
+    ax.set_ylim(-0.6*l,0.6*l)
+    ax.set_zlim(-0.6*l,0.6*l)
+    
+    return ax
+
 
 def plot_2D(S,e,a,b,l,ax=None, axes=(0,1)):
 
