@@ -7,11 +7,15 @@ import numpy as np
 
 import scipy.integrate as sp_int
 
-import elastic_force
+import yakoub_shape_function as shape_fun #generated with sym_shape_fun         
 
 import yakoub_mass_matrix #generated with sym_mass_matrix
 
+import elastic_force
+
 import constrains #generated with sym_constrains
+
+import Anim_element
 
 from RK4 import fixed_step_rk4 as RK4
 
@@ -50,8 +54,8 @@ dr0 = np.array([0,0,0]).T
 dr0_x = np.array([0,0,0]).T
 dr0_y = np.array([0,0,0]).T
 dr0_z = np.array([0,0,0]).T
-dr1 = np.array([0,0,0]).T
-# dr1 = np.array([0,1,0]).T
+# dr1 = np.array([0,0,0]).T
+dr1 = np.array([0,1,0]).T
 dr1_x = np.array([0,0,0]).T
 dr1_y = np.array([0,0,0]).T
 dr1_z = np.array([0,0,0]).T
@@ -68,7 +72,7 @@ y0 = np.hstack((dr0,dr0_x,dr0_y,dr0_z,dr1,dr1_x,dr1_y,dr1_z,
 Integration parameters
 """
 t0 = 0
-tf = .1
+tf = 1
 t_eval = np.linspace(t0,tf,1000)
 
 Baum_a = 1000
@@ -100,7 +104,8 @@ def fun(t,y):
     
     Qd = constrains.eval_Qd()
     QBaum = constrains.eval_QBaum(e,Baum_a,Baum_b)
-    Q = Fe.eval_Fe(e)
+    # Q = Fe.eval_Fe(e)
+    Q = np.zeros(24)
     b = np.hstack((Q,Qd.ravel()-QBaum.ravel()))
 
     X = np.linalg.solve(A, b)
@@ -112,7 +117,11 @@ def fun(t,y):
 Integration
 """
 
-# sol = sp_int.solve_ivp(fun, (t0,tf), y0, method='LSODA', t_eval=t_eval)
-sol = RK4(fun, y0, t_eval)
+sol = sp_int.solve_ivp(fun, (t0,tf), y0, method='LSODA', t_eval=t_eval)
+e = sol.y[ncoord:,:]
 
-e = sol[ncoord:,:]
+# sol = RK4(fun, y0, t_eval)
+# e = sol[ncoord:,:]
+
+Anim_element.Anim3D_element(t_eval[::2],e[:,::2],shape_fun.eval_S,a,b,l,
+                            save=True,time_interval=100)
